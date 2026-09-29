@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Incident Commander · memory-powered SRE</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">◎</span>
+      <div>
+        <h1>Incident Commander</h1>
+        <p class="tag">AI Site Reliability Engineer with <b>Hindsight</b> memory</p>
+      </div>
+    </div>
+    <div class="status" id="status">
+      <span class="pill" id="pill-backend">memory: …</span>
+      <span class="pill" id="pill-count">0 memories</span>
+      <span class="pill" id="pill-model">model: …</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- LEFT: incident console -->
+    <section class="console">
+      <div class="card">
+        <h2>🚨 Report an active incident</h2>
+        <label>Service</label>
+        <input id="service" placeholder="e.g. checkout-service" />
+        <label>What's happening? (paste error logs / symptoms)</label>
+        <textarea id="description" rows="5" placeholder="checkout-service returning 503s during flash sale; HikariCP 'Connection is not available' timeouts; Postgres connections maxed out"></textarea>
+        <div class="row">
+          <button id="btn-diagnose" class="primary">Diagnose</button>
+          <button id="btn-seed" class="ghost">Seed incident history</button>
+          <button id="btn-example" class="ghost">Load example</button>
+        </div>
+      </div>
+
+      <div class="card answer-card" id="answer-card" hidden>
+        <div class="answer-meta">
+          <span id="answer-model" class="pill small"></span>
+          <span id="answer-runbooks" class="pill small"></span>
+        </div>
+        <div id="answer" class="answer"></div>
+      </div>
+
+      <div class="card resolve-card" id="resolve-card" hidden>
+        <h2>✅ Resolved? Teach the agent</h2>
+        <p class="hint">Writing the postmortem to memory is the learning loop — the next similar incident gets diagnosed faster.</p>
+        <div class="grid2">
+          <input id="r-id" placeholder="Incident ID (e.g. INC-3001)" />
+          <input id="r-cause" placeholder="Root cause" />
+        </div>
+        <input id="r-resolution" placeholder="Resolution steps" />
+        <input id="r-worked" placeholder="What actually worked" />
+        <button id="btn-resolve" class="primary">Retain postmortem →</button>
+      </div>
+    </section>
+
+    <!-- RIGHT: the memory panel (the star) -->
+    <aside class="memory">
+      <div class="mem-head">
+        <h2>🧠 Memory</h2>
+        <button id="btn-refresh" class="ghost small">refresh</button>
+      </div>
+
+      <div class="recall-block" id="recall-block">
+        <h3>Recalled for this incident</h3>
+        <p class="empty" id="recall-empty">Diagnose an incident to see which past incidents the agent recalls.</p>
+        <ul id="recall-list"></ul>
+      </div>
+
+      <div class="insight-block">
+        <h3>Reflect (trends)</h3>
+        <div class="row">
+          <input id="insight-q" placeholder="what keeps breaking payments-api?" />
+          <button id="btn-insight" class="ghost small">ask</button>
+        </div>
+        <div id="insight-out" class="insight-out"></div>
+      </div>
+
+      <div class="timeline-block">
+        <h3>All memories <span id="mem-total" class="count">0</span></h3>
+        <ul id="mem-list" class="timeline"></ul>
+      </div>
+    </aside>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

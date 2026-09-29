@@ -1,0 +1,84 @@
+{
+  "incidents": [
+    {
+      "incident_id": "INC-2041",
+      "service": "payments-api",
+      "timestamp": "2026-06-14T09:22:00Z",
+      "severity": "SEV1",
+      "symptoms": "500 error rate on payments-api jumped from 0.2% to 34% at 09:20. HikariCP logs: 'Connection is not available, request timed out after 30000ms'. Postgres pg_stat_activity near max_connections (198/200).",
+      "root_cause": "Connection pool exhaustion after a marketing email drove a 3x traffic spike; pool_size=50 per replica x 4 replicas exceeded Postgres max_connections.",
+      "resolution": "Terminated idle-in-transaction sessions, then lowered pool_size to 40 and deployed PgBouncer in transaction-pooling mode.",
+      "what_worked": "Killing idle-in-transaction backends dropped active connections instantly; PgBouncer prevented recurrence."
+    },
+    {
+      "incident_id": "INC-2043",
+      "service": "checkout-service",
+      "timestamp": "2026-06-28T14:05:00Z",
+      "severity": "SEV2",
+      "symptoms": "checkout-service p99 latency spiked from 180ms to 4.2s at 14:03, right after Redis was restarted for a version upgrade. Cache hit rate fell to ~5%, Postgres CPU hit 95%.",
+      "root_cause": "Cache stampede: all keys cold after Redis restart, and identical TTLs caused synchronized expiries; every request hit the DB.",
+      "resolution": "Enabled single-flight rebuild on hot keys and added jittered TTLs (base +/- 20%). Warmed the top 200 catalog keys.",
+      "what_worked": "Single-flight lock + jittered TTL eliminated the thundering herd; DB CPU recovered within 6 minutes."
+    },
+    {
+      "incident_id": "INC-2050",
+      "service": "orders-api",
+      "timestamp": "2026-07-09T20:41:00Z",
+      "severity": "SEV2",
+      "symptoms": "orders-api pods in CrashLoopBackOff. kubectl describe shows 'Last State: Terminated, Reason: OOMKilled, exit code 137'. Started 8 minutes after release v3.4.0.",
+      "root_cause": "Memory regression in v3.4.0: an unbounded in-memory cache of order objects leaked under load, breaching the 512Mi limit.",
+      "resolution": "Rolled back to v3.3.9 with 'kubectl rollout undo', then shipped a fix bounding the cache with an LRU of 10k entries.",
+      "what_worked": "Immediate rollback stopped the OOMKills; error rate returned to baseline within 3 minutes of rollback."
+    },
+    {
+      "incident_id": "INC-2055",
+      "service": "payments-api",
+      "timestamp": "2026-07-21T11:12:00Z",
+      "severity": "SEV1",
+      "symptoms": "payments-api returning 502s. Error rate 41%. Spike started exactly at 11:10, one minute after deploy of v5.2.0. Healthy old replicas still serving.",
+      "root_cause": "Bad deploy: v5.2.0 introduced a null-pointer on the refund path when 'currency' was missing, crashing the request handler.",
+      "resolution": "Rolled back to v5.1.4, froze the payments pipeline, and added a regression test for missing-currency refunds.",
+      "what_worked": "Rollback first, diagnose second: 502s cleared within 2 minutes of reverting the deploy."
+    },
+    {
+      "incident_id": "INC-2061",
+      "service": "notifications-worker",
+      "timestamp": "2026-08-02T03:30:00Z",
+      "severity": "SEV3",
+      "symptoms": "Kafka consumer lag on 'notifications' topic climbing (now 1.2M messages). Consumer group rebalancing repeatedly. Logs show 'CommitFailedException: rebalance'.",
+      "root_cause": "max.poll.interval.ms too low for a slow downstream email provider; consumers exceeded it, triggering constant rebalances.",
+      "resolution": "Raised max.poll.interval.ms, reduced max.poll.records, and moved the slow email call behind an async queue.",
+      "what_worked": "Lowering max.poll.records to 100 stopped the rebalance loop; lag drained over 40 minutes."
+    },
+    {
+      "incident_id": "INC-2064",
+      "service": "checkout-service",
+      "timestamp": "2026-08-15T16:55:00Z",
+      "severity": "SEV1",
+      "symptoms": "checkout-service 503s at 16:53. HikariCP timeouts again; Postgres connections maxed. Coincided with a flash-sale traffic spike (4x baseline).",
+      "root_cause": "Connection pool exhaustion under flash-sale load — same failure mode as INC-2041 but on checkout-service, which had not yet adopted PgBouncer.",
+      "resolution": "Rolled out PgBouncer to checkout-service and right-sized the pool; added a load-shedding limiter at the edge.",
+      "what_worked": "PgBouncer transaction pooling (the fix from INC-2041) resolved it; recovery in ~5 minutes."
+    },
+    {
+      "incident_id": "INC-2070",
+      "service": "search-api",
+      "timestamp": "2026-08-27T13:18:00Z",
+      "severity": "SEV2",
+      "symptoms": "search-api latency p95 up 6x. Elasticsearch cluster status RED, one primary shard unassigned after a node ran out of disk (watermark flood-stage 95%).",
+      "root_cause": "Disk saturation on a data node from unrotated index growth tripped the flood-stage watermark, making indices read-only.",
+      "resolution": "Cleared old indices with ILM, added disk, and cleared the read-only-allow-delete block.",
+      "what_worked": "Deleting stale indices freed disk below the watermark; shard reassigned and status returned to GREEN."
+    },
+    {
+      "incident_id": "INC-2075",
+      "service": "orders-api",
+      "timestamp": "2026-09-05T22:07:00Z",
+      "severity": "SEV2",
+      "symptoms": "orders-api 500s at 22:05, 90 seconds after deploy v4.1.0. Clean before/after edge on the error graph aligned to the release.",
+      "root_cause": "Bad deploy: a DB migration in v4.1.0 renamed a column the old code path still referenced during the rolling update.",
+      "resolution": "Rolled back app, made the migration backward-compatible (expand/contract), and re-deployed.",
+      "what_worked": "Rollback cleared errors immediately; expand/contract migration pattern prevented recurrence."
+    }
+  ]
+}

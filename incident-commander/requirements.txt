@@ -1,0 +1,12 @@
+# Core web app
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+python-dotenv>=1.0
+
+# LLM (recommended by the hackathon: Groq)
+groq>=0.11
+
+# Memory (required hackathon technology: Hindsight)
+# Optional to install — the app runs on a local fallback store without it.
+hindsight-client>=0.1 ; python_version >= "3.9"
